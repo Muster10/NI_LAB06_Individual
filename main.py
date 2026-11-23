@@ -1,3 +1,4 @@
+import sys
 from src.manager import Manager
 from src.models import Parameters
 
@@ -63,11 +64,53 @@ def display_tenants(manager):
                 print(f"      • {format_currency(transfer.amount_pln):>15}  Date: {transfer.date}  Period: {month_year}")
 
 
+def display_settlement(manager: Manager, apartment_key: str, year: int, month: int):
+    """Display settlement for a specific apartment and month"""
+    try:
+        apartment_settlement = manager.get_settlement(apartment_key, year, month)
+    except ValueError as e:
+        print(f"Error: {e}")
+        return
+
+    if apartment_settlement is None:
+        print(f"Error: Apartment '{apartment_key}' not found.")
+        return
+
+    tenants_settlements = manager.create_tenants_settlements(apartment_settlement)
+
+    print_section_header(f"SETTLEMENT: {apartment_key} ({month:02d}/{year})")
+    print(f"\n Apartment: {apartment_settlement.apartment}")
+    print(f"   Settlement Key: {apartment_settlement.key}")
+    print(f"   Total Costs Due: {format_currency(apartment_settlement.total_due_pln)}")
+
+    print_subsection_header("Tenants Settlements")
+    if not tenants_settlements:
+        print("      No tenants assigned to this apartment.")
+    else:
+        for ts in tenants_settlements:
+            print(f"      • {ts.tenant:<25} Due: {format_currency(ts.total_due_pln):>15}")
+
 if __name__ == '__main__':
     parameters = Parameters()
     manager = Manager(parameters)
 
-    display_apartments(manager)
-    display_tenants(manager)
-    
+    if len(sys.argv) == 4:
+        apartment_key = sys.argv[1]
+        try:
+            year = int(sys.argv[2])
+            month = int(sys.argv[3])
+        except ValueError:
+            print("Error: Year and month must be integers.")
+            print("Usage: python main.py <apartment_key> <year> <month>")
+            sys.exit(1)
+
+        display_settlement(manager, apartment_key, year, month)
+    elif len(sys.argv) == 1:
+        display_apartments(manager)
+        display_tenants(manager)
+    else:
+        print("Usage: python main.py <apartment_key> <year> <month>")
+        print("Example: python main.py apart-polanka 2025 1")
+        sys.exit(1)
+
     print(f"\n{'=' * 70}\n")
